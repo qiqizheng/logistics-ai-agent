@@ -1,7 +1,7 @@
 # Logistics Agent 项目记忆
 
 > 本文件用于跨会话记录项目现状。后续开始开发前，请先阅读并在完成重要改动后更新。
-> 最后更新：2026-10-28（Asia/Shanghai）
+> 最后更新：2026-10-30（Asia/Shanghai）
 
 ## 1. 项目目标
 
@@ -11,7 +11,7 @@
 Vue 前端
   -> FastAPI Agent API
   -> 千问 qwen-plus（Function Calling）
-  -> 订单 MCP（Streamable HTTP）
+  -> 物流业务 MCP（订单、提单、付款单、对账单；Streamable HTTP）
   -> MySQL wq 数据库
 ```
 
@@ -21,7 +21,7 @@ FastAPI 还会把会话消息持久化到 SQLite，作为多轮对话 Memory。
 
 ### Vue 前端（项目根目录）
 
-- `src/App.vue`：聊天页面，向 `POST /api/chat` 发送请求。
+- `src/App.vue`：聊天页面，支持切换订单/提单/财务对话，向 `POST /api/chat` 发送请求。
 - `vite.config.js`：把 `/api/*` 代理到 `http://localhost:8000`，并移除 `/api` 前缀。
 - 前端请求格式：
 
@@ -34,8 +34,10 @@ FastAPI 还会把会话消息持久化到 SQLite，作为多轮对话 Memory。
 
 ### `logistics_mcp/`：物流业务 MCP
 
-- `logistics_mcp/server.py`：MCP 服务入口，注册 `get_order_detail(order_no)`。
+- `logistics_mcp/server.py`：MCP 服务入口，注册订单、提单和财务付款单工具。
 - `logistics_mcp/tools/order.py`：订单数据库查询和状态转换。
+- `logistics_mcp/tools/shipment.py`：提单数据库查询和状态转换。
+- `logistics_mcp/tools/finance.py`：财务付款单与对账单的数据库查询和状态转换。
 - `logistics_mcp/database.py`：MySQL 连接配置。
 - 默认 HTTP MCP 地址：`http://127.0.0.1:8001/mcp`。
 - MCP 必须使用 `streamable-http` 模式，FastAPI 才能通过 HTTP 调用。
@@ -72,6 +74,54 @@ LIMIT 1
 | 9 | 订单异常 |
 | 10 | 已申请流转 |
 
+提单查询 SQL：
+
+```sql
+SELECT shipment_code AS shipment_no, operating_status
+FROM tb_shipment
+WHERE shipment_code = %s
+LIMIT 1
+```
+
+提单字段和状态：
+
+- 表：`tb_shipment`
+- 提单号查询参数：`shipment_no`；数据库实际字段：`shipment_code`
+- 状态：`operating_status`
+- 1 待流转干线；2 待绑干线；3 已绑干线；4 待更资料；5 已更资料；6 资料归档。
+
+付款单查询 SQL：
+
+```sql
+SELECT voucher_num, status
+FROM tb_fee_voucher
+WHERE voucher_num = %s
+LIMIT 1
+```
+
+付款单字段和状态：
+
+- 表：`tb_fee_voucher`
+- 付款单号：`voucher_num`
+- 状态：`status`（数据库类型为字符串，MCP 返回整数）
+- 100 新建；200 审核；300 记账；400 作废。
+
+对账单查询 SQL：
+
+```sql
+SELECT bill_num, status
+FROM tb_fee_bill
+WHERE bill_num = %s
+LIMIT 1
+```
+
+对账单字段和状态：
+
+- 表：`tb_fee_bill`
+- 对账单号：`bill_num`
+- 状态：`status`（数据库类型为字符串，MCP 返回整数）
+- 100 新建；200 审核；300 记账。
+
 ### `agent_api/`：千问 Agent API 与 Memory
 
 - `logistics_agent_api/main.py`：FastAPI 路由。
@@ -95,7 +145,7 @@ MCP_SERVER_URL=http://127.0.0.1:8001/mcp
 
 ## 3. FastAPI 接口
 
-- `POST /chat`：调用千问；需要订单数据时由千问调用 `get_order_detail`，保存最终一问一答。
+- `POST /chat`：调用千问；订单查询调用 `get_order_detail`，提单查询调用 `get_shipment_detail`，付款单查询调用 `get_payment_voucher_detail`，对账单查询调用 `get_reconciliation_bill_detail`，保存最终一问一答。
 - `GET /conversations`：列出本地会话。
 - `GET /conversations/{conversation_id}/messages`：读取会话 Memory。
 - `DELETE /conversations/{conversation_id}`：删除会话和对应 Memory。
@@ -175,7 +225,7 @@ cd D:\Dev\workspace\logistics-agent\agent_api
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-最后一次运行 Agent 测试：9 项全部通过。
+最后一次运行测试：MCP 20 项、Agent API 15 项全部通过；Vue 生产构建通过。
 
 ### 不调用千问，直接检查 MCP
 
@@ -188,6 +238,18 @@ cd D:\Dev\workspace\logistics-agent\agent_api
 
 ```text
 JFK24050029 -> examine_status=0 -> 新建
+```
+
+已确认测试付款单：
+
+```text
+LD20261029010 -> status=100 -> 新建
+```
+
+已确认测试对账单：
+
+```text
+OUT20260917001 -> status=100 -> 新建
 ```
 
 ### 端口检查
@@ -251,4 +313,3 @@ SQLite 连接曾只提交事务但没有显式关闭，Windows 测试清理时�
 - 为 FastAPI 增加认证、请求日志脱敏和生产环境部署配置。
 - 前端会话列表目前仍以演示数据为主，可接入 `/conversations` 和消息历史接口。
 - 根据数据量评估 Memory 摘要、Token 截断和会话归档策略。
-

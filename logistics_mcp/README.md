@@ -1,7 +1,7 @@
 # 物流业务 MCP Server
 
-Python 实现的物流业务 MCP 服务。当前提供订单状态查询，后续可以在
-`logistics_mcp/tools/` 下继续增加提单、财务、扣罚等工具模块。
+Python 实现的物流业务 MCP 服务。当前提供订单、提单、财务付款单和对账单状态查询，
+后续可以在 `logistics_mcp/tools/` 下继续增加扣罚等工具模块。
 
 ## 当前工具
 
@@ -25,6 +25,76 @@ LIMIT 1
   "status_text": "运输中"
 }
 ```
+
+### `get_shipment_detail(shipment_no)`
+
+使用提单号查询 `wq.tb_shipment`：
+
+```sql
+SELECT shipment_code AS shipment_no, operating_status
+FROM tb_shipment
+WHERE shipment_code = %s
+LIMIT 1
+```
+
+返回示例：
+
+```json
+{
+  "shipment_no": "BL20261030001",
+  "operating_status": 3,
+  "status_text": "已绑干线"
+}
+```
+
+提单状态：1 待流转干线、2 待绑干线、3 已绑干线、4 待更资料、5 已更资料、
+6 资料归档。
+
+### `get_payment_voucher_detail(voucher_num)`
+
+使用付款单号查询 `wq.tb_fee_voucher`：
+
+```sql
+SELECT voucher_num, status
+FROM tb_fee_voucher
+WHERE voucher_num = %s
+LIMIT 1
+```
+
+返回示例：
+
+```json
+{
+  "voucher_num": "LD20261029010",
+  "status": 100,
+  "status_text": "新建"
+}
+```
+
+付款单状态：100 新建、200 审核、300 记账、400 作废。
+
+### `get_reconciliation_bill_detail(bill_num)`
+
+使用对账单号查询 `wq.tb_fee_bill`：
+
+```sql
+SELECT bill_num, status
+FROM tb_fee_bill
+WHERE bill_num = %s
+LIMIT 1
+```
+
+返回示例：
+
+```json
+{
+  "bill_num": "OUT20260917001",
+  "status": 100,
+  "status_text": "新建"
+}
+```
+
+对账单状态：100 新建、200 审核、300 记账。
 
 ## 安装
 
@@ -68,4 +138,3 @@ MCP 地址为 `http://127.0.0.1:8001/mcp`。HTTP 模式只监听本机地址。
 ```powershell
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
-

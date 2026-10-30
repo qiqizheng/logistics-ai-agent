@@ -37,6 +37,7 @@ button { color: inherit; }
 .module-item { position: relative; gap: 11px; padding: 10px 11px; margin: 2px 0; border-radius: 8px; color: #68746e; font-size: 13px; }
 .module-item.active { color: #135d46; background: #e8f1ec; font-weight: 600; }
 .module-item.active::before { content: ''; position: absolute; left: 0; width: 3px; height: 17px; border-radius: 4px; background: var(--green); }
+.module-item.disabled { cursor: not-allowed; opacity: .72; }
 .soon { margin-left: auto; color: #9ba49f; padding: 3px 6px; background: #eceeeb; border-radius: 4px; font-size: 8px; font-weight: 600; }
 .history-section { min-height: 0; overflow: hidden; }
 .session-item { gap: 10px; padding: 9px 10px; border-radius: 8px; color: #7b8580; }

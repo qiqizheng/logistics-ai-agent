@@ -1,7 +1,7 @@
 # 物流 Agent API
 
 FastAPI 实现的千问 Agent 后端，使用 SQLite 持久化会话 Memory，并通过
-Function Calling 调用订单 MCP。接口与当前 Vue
+Function Calling 调用订单、提单、财务付款单和对账单 MCP。接口与当前 Vue
 页面的 `POST /api/chat` 请求格式兼容；Vite 会把 `/api/chat` 转发到本服务的
 `POST /chat`。
 
@@ -10,7 +10,7 @@ Function Calling 调用订单 MCP。接口与当前 Vue
 - `logistics_agent_api/main.py`：FastAPI 路由
 - `logistics_agent_api/llm.py`：千问异步调用封装
 - `logistics_agent_api/agent.py`：千问 Function Calling 与工具编排
-- `logistics_agent_api/mcp_client.py`：订单 MCP HTTP 客户端
+- `logistics_agent_api/mcp_client.py`：物流业务 MCP HTTP 客户端
 - `logistics_agent_api/memory.py`：SQLite 会话 Memory
 - `logistics_agent_api/config.py`：环境变量配置
 
@@ -61,7 +61,7 @@ Vue 的 `/api` 代理即可访问它。
 
 ## API
 
-- `POST /chat`：调用千问；需要订单数据时调用 MCP，并保存一问一答
+- `POST /chat`：调用千问；需要订单、提单、付款单或对账单数据时调用 MCP，并保存一问一答
 - `GET /conversations`：列出会话
 - `GET /conversations/{id}/messages`：读取完整 Memory
 - `DELETE /conversations/{id}`：删除会话及其 Memory
